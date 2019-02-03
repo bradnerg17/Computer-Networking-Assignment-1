@@ -1,7 +1,6 @@
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
 #include <iostream>
-#include <stdlib.h>
 #include "FileHelper.h"
 using namespace std;
 
@@ -35,10 +34,6 @@ int main()
 	ofstream	dataFile;
 	ofstream	updateFile;
 	ifstream	readUpdate;
-
-	// Add code here to
-	// 1) make sure that we are using the current version of the data file
-	// 2) update the data file if it is out of data
 	
 	// Loads Windows DLL (Winsock version 2.2) used in network programming
 	if ( WSAStartup( MAKEWORD(2, 2), &wsaData ) != NO_ERROR )
@@ -70,46 +65,59 @@ int main()
 	}
 
 	int sendQuery = send(mySocket, (char*)&QUERY, 1, 0);
+	
+	cout << "Contacting server...\n";
+
 	if (sendQuery == SOCKET_ERROR) 
 	{
-		cerr << "ERROR: Failed to send message\n";
+		cerr << "ERROR: Failed to send request\n";
 		cleanup(mySocket);
 		return 1;
 	}
 
-	int iRecv = recv(mySocket, (char*)&serverVersion, BUFSIZ, 0);
+	int versionRecv = recv(mySocket, (char*)&serverVersion, BUFSIZ, 0);
 
-	if (iRecv == 0)
+	cout << "Recieving version number...\n";
+
+	if (versionRecv == SOCKET_ERROR)
 	{
-		cout << "Connection closed\n";
-		cleanup(mySocket);
-		return 0;
-	}
-	else
-	{
-		cerr << "ERROR: Failed to receive message\n";
+		cerr << "ERROR: Failed to receive version number\n";
 		cleanup(mySocket);
 		return 1;
 	}
-
 
 	// Main purpose of the program starts here: read two numbers from the data file and calculate the sum
 	localVersion = getLocalVersion();
-	cout << "\nSum Calculator current version " << localVersion << "\n\n";
+
+	cout << "\nSum Calculator server version " << serverVersion << "\n\n";
+
+	cout << "Sum Calculator current version " << localVersion << "\n\n";
 
 	if(localVersion != serverVersion)
 	{
+		cout << "\nSum Calculator must be updated\n\n";
+
 		int sendUpdate = send(mySocket, (char*)&UPDATE, 1, 0);
+
+		cout << "Requesting update version " << serverVersion << "...\n";
+
 		if (sendUpdate == SOCKET_ERROR)
 		{
-			cerr << "ERROR: Failed to send message\n";
+			cerr << "ERROR: Failed to send update request\n";
 			cleanup(mySocket);
 			return 1;
 		}
 
-		cout << "\n Application must be updated\n\n";
+		int updateRecv = recv(mySocket, updateBuff, BUFSIZ, 0);
 
-		recv(mySocket, updateBuff, BUFSIZ, 0);
+		cout << "Recieving update information";
+
+		if (updateRecv == SOCKET_ERROR)
+		{
+			cout << "ERROR: Failed to recieve update\n";
+			cleanup(mySocket);
+			return 1;
+		}
 
 		updateFile.open(UPDATENAME);
 		writeInt(updateFile, (int)updateBuff);
@@ -121,6 +129,9 @@ int main()
 
 		dataFile.open(FILENAME);
 		writeInt(dataFile, toData);
+
+		cout << "Updating data file\n";
+
 		dataFile.close();
 	}
 
