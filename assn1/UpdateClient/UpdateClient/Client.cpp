@@ -1,6 +1,7 @@
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
 #include <iostream>
+#include <stdlib.h>
 #include "FileHelper.h"
 using namespace std;
 
@@ -29,7 +30,7 @@ int main()
 	int			num1 = 0;
 	int			num2 = 0;	
 	int			localVersion = 0;
-	int			serverVersion = 0;
+	int			serverVersion;
 	char*	    updateBuff;
 	ofstream	dataFile;
 	ofstream	updateFile;
@@ -76,7 +77,8 @@ int main()
 		return 1;
 	}
 
-	int iRecv = recv(mySocket, (char*)serverVersion, BUFSIZ, 0);
+	int iRecv = recv(mySocket, (char*)&serverVersion, BUFSIZ, 0);
+
 	if (iRecv == 0)
 	{
 		cout << "Connection closed\n";
@@ -89,6 +91,7 @@ int main()
 		//cleanup(mySocket);
 		return 1;
 	}
+
 
 	// Main purpose of the program starts here: read two numbers from the data file and calculate the sum
 	localVersion = getLocalVersion();
@@ -122,7 +125,6 @@ int main()
 	}
 
 	
-
 	readData(num1, num2);	
 	sum = num1 + num2;
 	cout << "The sum of " << num1 << " and " << num2 << " is " << sum << endl;
