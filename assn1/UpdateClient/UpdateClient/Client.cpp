@@ -65,15 +65,15 @@ int main()
 	if (connect(mySocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 	{
 		cerr << "ERROR: Failed to connect\n";
-		//cleanup(mySocket);
+		cleanup(mySocket);
 		return 1;
 	}
 
-	int sendQuery = send(mySocket, (char*)QUERY, 1, 0);
+	int sendQuery = send(mySocket, (char*)&QUERY, 1, 0);
 	if (sendQuery == SOCKET_ERROR) 
 	{
 		cerr << "ERROR: Failed to send message\n";
-		//cleanup(mySocket);
+		cleanup(mySocket);
 		return 1;
 	}
 
@@ -82,13 +82,13 @@ int main()
 	if (iRecv == 0)
 	{
 		cout << "Connection closed\n";
-		//cleanup(mySocket);
+		cleanup(mySocket);
 		return 0;
 	}
 	else
 	{
 		cerr << "ERROR: Failed to receive message\n";
-		//cleanup(mySocket);
+		cleanup(mySocket);
 		return 1;
 	}
 
@@ -99,11 +99,11 @@ int main()
 
 	if(localVersion != serverVersion)
 	{
-		int sendUpdate = send(mySocket, (char*)UPDATE, 1, 0);
+		int sendUpdate = send(mySocket, (char*)&UPDATE, 1, 0);
 		if (sendUpdate == SOCKET_ERROR)
 		{
 			cerr << "ERROR: Failed to send message\n";
-			//cleanup(mySocket);
+			cleanup(mySocket);
 			return 1;
 		}
 
@@ -156,4 +156,10 @@ void readData(int& num1, int& num2)
 	num2 = readInt(dataFile);
 
 	dataFile.close();
+}
+
+void cleanup(SOCKET socket)
+{
+	closesocket(socket);
+	WSACleanup();
 }
