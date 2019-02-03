@@ -25,14 +25,14 @@ void cleanup(SOCKET socket);
 
 int main()
 {
-	WSADATA     wsaData;
-	SOCKADDR_IN serverAddr;
+	WSADATA		wsaData;
+	SOCKADDR_IN	serverAddr;
 	int			sum;
 	int			num1 = 0;
 	int			num2 = 0;	
 	int			localVersion = 0;
 	int			serverVersion;
-	char	    updateBuff[BUFSIZ];
+	char		updateBuff[BUFSIZ];
 	ofstream	dataFile;
 	ofstream	updateFile;
 	ifstream	readUpdate;
