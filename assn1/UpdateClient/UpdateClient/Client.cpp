@@ -21,6 +21,8 @@ int getLocalVersion();
 // two values that were read from the file.
 void readData(int& num1, int& num2);
 
+void cleanup(SOCKET socket);
+
 int main()
 {
 	WSADATA     wsaData;
@@ -30,7 +32,7 @@ int main()
 	int			num2 = 0;	
 	int			localVersion = 0;
 	int			serverVersion;
-	char*	    updateBuff;
+	char	    updateBuff[BUFSIZ];
 	ofstream	dataFile;
 	ofstream	updateFile;
 	ifstream	readUpdate;
