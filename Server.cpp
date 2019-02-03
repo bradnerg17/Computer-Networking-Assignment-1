@@ -60,6 +60,7 @@ int main()
 		return 1;
 	}
 	
+	receiveData(sock2, updateBuff, ubSize); 
 	sock2.close();
 	return 0;
 }
@@ -73,13 +74,12 @@ int getLocalVersion()
 
 	return version;
 }
-void recieveSock(SOCKET sock, char* updateBuff;
-int ubSize)
+void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 {
 	int clientAddrSize = sizeof(clientAddr);
 	int clientRequest;
 
-	clientRequest = recv(sock2, updateBuff, ubSize, 0);
+	clientRequest = recv(sock, updateBuff, ubSize, 0);
 	switch (clientRequest) {
 	case SOCKET_ERROR:
 		cerr << "ERROR: Listen failed\n";
@@ -88,26 +88,38 @@ int ubSize)
 		break;
 	case 1:
 		updateBuff = (char*)getLocalVersion();
-		if (send(sock2, updateBuff, ubSize, 0) < 0)
+		if (send(sock, updateBuff, ubSize, 0) < 0)
 		{
 			cerr << "ERROR: Send failed\n";
 			WSACleanup();
 			return 1;
 		}
-		sock2.close();
-
+		sock.close();
+		if (SOCKET newSock = accept(sock, clientAddr, clientAddrSize) > 0) {
+		cerr << "ERROR: Accept failed\n";
+		WSACleanup();
+		return 1;
+		}
+		receive(newSock, updateBuff, ubSize);
 		break;
 	case 2:
 		ifstream dataFile;
 		openInputFile(dataFile, FILENAME);
 		updateBuff = (char*)readInt(dataFile);
 		dataFile.close();
-		if (send(sock2, updateBuff, ubSize, 0) < 0)
+		if (send(sock, updateBuff, ubSize, 0) < 0)
 		{
 			cerr << "ERROR: Send failed\n";
 			WSACleanup();
 			return 1;
 		}
+		sock.close;
+		if (SOCKET newSock = accept(sock, clientAddr, clientAddrSize) > 0) {
+		cerr << "ERROR: Accept failed\n";
+		WSACleanup();
+		return 1;
+		}
+		receiveData(newSock, updateBuff, ubSize);
 		break;
 	}
 }
