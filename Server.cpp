@@ -110,7 +110,7 @@ int main()
 	//inet_pton(AF_INET, IPADDR, &clientAddr.sin_addr);
 
 	int currentVersion = getLocalVersion();
-	if (bind(sock1, clientAddr, clientAddrSize < 0))
+	if (bind(sock1, clientAddr, clientAddrSize > 0))
 	{
 		cerr << "ERROR: Bind failed\n";
 			WSACleanup();
