@@ -22,9 +22,8 @@ int getLocalVersion()
 
 	return version;
 }
-void receiveData(SOCKET sock, char* updateBuff, int ubSize)
+void receiveData(SOCKET sock, char* updateBuff, int ubSize, int clientAddrSize)
 {
-	int clientAddrSize = sizeof(clientAddr);
 	int clientRequest;
 
 	clientRequest = recv(sock, updateBuff, ubSize, 0);
