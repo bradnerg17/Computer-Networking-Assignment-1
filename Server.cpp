@@ -49,7 +49,7 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize, int clientAddrSize)
 			WSACleanup();
 			return;
 		}
-		receiveData(newSock, updateBuff, ubSize);
+		receiveData(newSock, updateBuff, ubSize, clientAddrSize);
 		break;
 	case 2:
 		ifstream dataFile;
@@ -70,7 +70,7 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize, int clientAddrSize)
 			WSACleanup();
 			return;
 		}
-		receiveData(newSock, updateBuff, ubSize);
+		receiveData(newSock, updateBuff, ubSize. clientAddrSize);
 		break;
 	}
 }
@@ -129,7 +129,7 @@ int main()
 		return 1;
 	}
 
-	receiveData(sock2, updateBuff, ubSize);
+	receiveData(sock2, updateBuff, ubSize, clientAddrSize);
 	closesocket(sock2);
 	WSACleanup();
 	return 0;
