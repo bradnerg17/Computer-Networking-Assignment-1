@@ -11,65 +11,13 @@ const char IPADDR[] = "127.0.0.1";
 const int  PORT = 50000;
 const int  QUERY = 1;
 const int  UPDATE = 2;
-int main()
-{
-	// Add your code here for the server
-	WSADATA wsaData;
-	SOCKADDR_IN clientAddr;
-	SOCKET sock1;
-	SOCKET sock2;
-	int clientAddrSize = sizeof(clientAddr);
-	int clientRequest;
-	char* updateBuff;
-	int ubSize = sizeof(updateBuff);
-	//Load Windows DLL
-	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != NO_ERROR) {
-		cerr << "ERROR: Problem with WSAStartup\n";
-		return 1;
-	}
-	//Create Socket
-	sock1 = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock1 == INVALID_SOCKET)
-	{
-		cerr << "ERROR: Cannot Create Socket\n";
-		WSACleanup();
-		return 1;
-	}
-	clientAddr.sin_family = AF_INET;
-	clientAddr.sin_port = htons(PORT);
-	inet_pton(AF_INET, IPADDR, &clientAddr.sin_addr);
-
-	int currentVersion = getLocalVersion();
-	if (bind(sock1, clientAddr, clientAddrSize < 0)
-	{
-		cerr << "ERROR: Bind failed\n";
-		WSACleanup();
-		return 1;
-	}
-
-	if (listen(sock1, 3) > 0)
-	{
-		cerr << "ERROR: Listen failed\n";
-		WSACleanup();
-		return 1;
-	}
-
-	if (sock2 = accept(sock1, clientAddr, clientAddrSize) > 0) {
-		cerr << "ERROR: Accept failed\n";
-		WSACleanup();
-		return 1;
-	}
-	
-	receiveData(sock2, updateBuff, ubSize); 
-	sock2.close();
-	return 0;
-}
+sockaddr * clientAddr;
 int getLocalVersion()
 {
 	ifstream dataFile;
 	openInputFile(dataFile, FILENAME);
 
-	int version = readInt();
+	int version = readInt(dataFile);
 	dataFile.close();
 
 	return version;
@@ -84,7 +32,7 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 	case SOCKET_ERROR:
 		cerr << "ERROR: Listen failed\n";
 		WSACleanup();
-		return 1;
+		return;
 		break;
 	case 1:
 		updateBuff = (char*)getLocalVersion();
@@ -92,15 +40,17 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 		{
 			cerr << "ERROR: Send failed\n";
 			WSACleanup();
-			return 1;
+			return;
 		}
-		sock.close();
-		if (SOCKET newSock = accept(sock, clientAddr, clientAddrSize) > 0) {
-		cerr << "ERROR: Accept failed\n";
+		closesocket(sock);
 		WSACleanup();
-		return 1;
+		SOCKET newSock;
+		if (newSock = accept(sock, clientAddr, &clientAddrSize) > 0) {
+			cerr << "ERROR: Accept failed\n";
+			WSACleanup();
+			return;
 		}
-		receive(newSock, updateBuff, ubSize);
+		receiveData(newSock, updateBuff, ubSize);
 		break;
 	case 2:
 		ifstream dataFile;
@@ -111,15 +61,77 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 		{
 			cerr << "ERROR: Send failed\n";
 			WSACleanup();
-			return 1;
+			return;
 		}
-		sock.close;
-		if (SOCKET newSock = accept(sock, clientAddr, clientAddrSize) > 0) {
-		cerr << "ERROR: Accept failed\n";
+		closesocket(sock);
 		WSACleanup();
-		return 1;
+		//SOCKET newSock;
+		if (newSock = accept(sock, clientAddr, &clientAddrSize) > 0) {
+			cerr << "ERROR: Accept failed\n";
+			WSACleanup();
+			return;
 		}
 		receiveData(newSock, updateBuff, ubSize);
 		break;
 	}
+}
+//void cleanUp(SOCKET socket)
+//{
+	//closesocket(socket);
+	//WSACleanup();
+//}
+
+int main()
+{
+	// Add your code here for the server
+	WSADATA wsaData;
+	
+	SOCKET sock1;
+	SOCKET sock2;
+	int clientAddrSize = sizeof(clientAddr);
+	int clientRequest;
+	char updateBuff[3] ;
+	int ubSize = sizeof(updateBuff);
+	//Load Windows DLL
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
+		cerr << "ERROR: Problem with WSAStartup\n";
+		return 1;
+	}
+	//Create Socket
+	sock1 = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock1 == INVALID_SOCKET)
+	{
+		cerr << "ERROR: Cannot Create Socket\n";
+		WSACleanup();
+		return 1;
+	}
+	//clientAddr.sin_family = AF_INET;
+	//clientAddr.sin_port = htons(PORT);
+	//inet_pton(AF_INET, IPADDR, &clientAddr.sin_addr);
+
+	int currentVersion = getLocalVersion();
+	if (bind(sock1, clientAddr, clientAddrSize < 0))
+	{
+		cerr << "ERROR: Bind failed\n";
+			WSACleanup();
+			return 1;
+	}
+
+	if (listen(sock1, 3) > 0)
+	{
+		cerr << "ERROR: Listen failed\n";
+			WSACleanup();
+			return 1;
+	}
+
+	if (sock2 = accept(sock1, clientAddr, &clientAddrSize) > 0) {
+		cerr << "ERROR: Accept failed\n";
+		WSACleanup();
+		return 1;
+	}
+
+	receiveData(sock2, updateBuff, ubSize);
+	closesocket(sock2);
+	WSACleanup();
+	return 0;
 }
