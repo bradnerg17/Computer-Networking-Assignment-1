@@ -1,5 +1,2 @@
-﻿  FileHelper.cpp
-  Server.cpp
-c:\users\grego\downloads\computer-networking\assn1\updateserver\updateserver\server.cpp(92): warning C4101: 'clientRequest': unreferenced local variable
-  Generating Code...
+﻿  Server.cpp
   UpdateServer.vcxproj -> C:\Users\grego\Downloads\Computer-Networking\assn1\UpdateServer\Debug\UpdateServer.exe
