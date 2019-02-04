@@ -90,7 +90,7 @@ int main()
 	SOCKET sock2;
 	int clientAddrSize = sizeof(clientAddr);
 	int clientRequest;
-	char updateBuff[3] ;
+	char updateBuff[BUFSIZ] ;
 	int ubSize = sizeof(updateBuff);
 	//Load Windows DLL
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
