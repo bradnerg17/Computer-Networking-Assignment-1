@@ -22,9 +22,8 @@ int getLocalVersion()
 
 	return version;
 }
-void receiveData(SOCKET sock, char* updateBuff, int ubSize)
+void receiveData(SOCKET sock, char* updateBuff, int ubSize, int clientAddrSize)
 {
-	int clientAddrSize = sizeof(clientAddr);
 	int clientRequest;
 
 	clientRequest = recv(sock, updateBuff, ubSize, 0);
@@ -50,7 +49,7 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 			WSACleanup();
 			return;
 		}
-		receiveData(newSock, updateBuff, ubSize);
+		receiveData(newSock, updateBuff, ubSize, clientAddrSize);
 		break;
 	case 2:
 		ifstream dataFile;
@@ -71,7 +70,7 @@ void receiveData(SOCKET sock, char* updateBuff, int ubSize)
 			WSACleanup();
 			return;
 		}
-		receiveData(newSock, updateBuff, ubSize);
+		receiveData(newSock, updateBuff, ubSize. clientAddrSize);
 		break;
 	}
 }
@@ -90,7 +89,7 @@ int main()
 	SOCKET sock2;
 	int clientAddrSize = sizeof(clientAddr);
 	int clientRequest;
-	char updateBuff[3] ;
+	char updateBuff[BUFSIZ] ;
 	int ubSize = sizeof(updateBuff);
 	//Load Windows DLL
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
@@ -110,7 +109,7 @@ int main()
 	//inet_pton(AF_INET, IPADDR, &clientAddr.sin_addr);
 
 	int currentVersion = getLocalVersion();
-	if (bind(sock1, clientAddr, clientAddrSize < 0))
+	if (bind(sock1, clientAddr, clientAddrSize > 0))
 	{
 		cerr << "ERROR: Bind failed\n";
 			WSACleanup();
@@ -130,7 +129,7 @@ int main()
 		return 1;
 	}
 
-	receiveData(sock2, updateBuff, ubSize);
+	receiveData(sock2, updateBuff, ubSize, clientAddrSize);
 	closesocket(sock2);
 	WSACleanup();
 	return 0;
