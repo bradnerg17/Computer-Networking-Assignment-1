@@ -136,7 +136,7 @@ int main()
 
 		dataFile.close();
 	}
-	cleanup(mySocket);
+	closesocket(mySocket);
 	
 	readData(num1, num2);	
 	sum = num1 + num2;
