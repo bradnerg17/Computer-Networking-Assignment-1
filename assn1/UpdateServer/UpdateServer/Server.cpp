@@ -11,126 +11,118 @@ const char IPADDR[] = "127.0.0.1";
 const int  PORT = 50000;
 const int  QUERY = 1;
 const int  UPDATE = 2;
-sockaddr * clientAddr;
-int getLocalVersion()
-{
-	ifstream dataFile;
-	openInputFile(dataFile, FILENAME);
 
-	int version = readInt(dataFile);
-	dataFile.close();
-
-	return version;
-}
-void receiveData(SOCKET sock, char* updateBuff, int ubSize, int clientAddrSize)
-{
-	int clientRequest;
-
-	clientRequest = recv(sock, updateBuff, ubSize, 0);
-	switch (clientRequest) {
-	case SOCKET_ERROR:
-		cerr << "ERROR: Listen failed\n";
-		WSACleanup();
-		return;
-		break;
-	case 1:
-		updateBuff = (char*)getLocalVersion();
-		if (send(sock, updateBuff, ubSize, 0) < 0)
-		{
-			cerr << "ERROR: Send failed\n";
-			WSACleanup();
-			return;
-		}
-		closesocket(sock);
-		WSACleanup();
-		SOCKET newSock;
-		if (newSock = accept(sock, clientAddr, &clientAddrSize) > 0) {
-			cerr << "ERROR: Accept failed\n";
-			WSACleanup();
-			return;
-		}
-		receiveData(newSock, updateBuff, ubSize, clientAddrSize);
-		break;
-	case 2:
-		ifstream dataFile;
-		openInputFile(dataFile, FILENAME);
-		updateBuff = (char*)readInt(dataFile);
-		dataFile.close();
-		if (send(sock, updateBuff, ubSize, 0) < 0)
-		{
-			cerr << "ERROR: Send failed\n";
-			WSACleanup();
-			return;
-		}
-		closesocket(sock);
-		WSACleanup();
-		//SOCKET newSock;
-		if (newSock = accept(sock, clientAddr, &clientAddrSize) > 0) {
-			cerr << "ERROR: Accept failed\n";
-			WSACleanup();
-			return;
-		}
-		receiveData(newSock, updateBuff, ubSize, clientAddrSize);
-		break;
-	}
-}
-//void cleanUp(SOCKET socket)
-//{
-	//closesocket(socket);
-	//WSACleanup();
-//}
+void cleanup(SOCKET socket);
 
 int main()
 {
-	// Add your code here for the server
-	WSADATA wsaData;
-	
-	SOCKET sock1;
-	SOCKET sock2;
-	int clientAddrSize = sizeof(clientAddr);
-	int clientRequest;
-	char updateBuff[BUFSIZ] ;
-	int ubSize = sizeof(updateBuff);
-	//Load Windows DLL
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
+	WSADATA		wsaData;
+	SOCKET		listenSocket;
+	SOCKET		acceptSocket;
+	SOCKADDR_IN	serverAddr;
+	int			clientRequest = 0;
+	ifstream	dataFile;
+	ofstream	updateFile;
+
+	// Loads Windows DLL (Winsock version 2.2) used in network programming
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR)
+	{
 		cerr << "ERROR: Problem with WSAStartup\n";
 		return 1;
 	}
-	//Create Socket
-	sock1 = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock1 == INVALID_SOCKET)
-	{
-		cerr << "ERROR: Cannot Create Socket\n";
-		WSACleanup();
-		return 1;
-	}
-	//clientAddr.sin_family = AF_INET;
-	//clientAddr.sin_port = htons(PORT);
-	//inet_pton(AF_INET, IPADDR, &clientAddr.sin_addr);
+	// Create a new socket to listen for client connections
+	listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	int currentVersion = getLocalVersion();
-	if (bind(sock1, clientAddr, clientAddrSize > 0))
+	if (listenSocket == INVALID_SOCKET)
 	{
-		cerr << "ERROR: Bind failed\n";
-			WSACleanup();
-			return 1;
-	}
-
-	if (listen(sock1, 3) > 0)
-	{
-		cerr << "ERROR: Listen failed\n";
-			WSACleanup();
-			return 1;
-	}
-
-	if (sock2 = accept(sock1, clientAddr, &clientAddrSize) > 0) {
-		cerr << "ERROR: Accept failed\n";
+		cerr << "ERROR: Cannot create socket\n";
 		WSACleanup();
 		return 1;
 	}
 
-	receiveData(sock2, updateBuff, ubSize, clientAddrSize);
-	closesocket(sock2);
-	WSACleanup();
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = htons(PORT);
+	inet_pton(AF_INET, IPADDR, &serverAddr.sin_addr);
+
+	if (bind(listenSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+	{
+		cerr << "ERROR: Cannot bind to port\n";
+		cleanup(listenSocket);
+		return 1;
+	}
+
+	cout << "Waiting for connection...\n";
+	// Start listening for incoming connections
+	if (listen(listenSocket, 1) == SOCKET_ERROR)
+	{
+		cerr << "ERROR: Problem with listening on socket\n";
+		cleanup(listenSocket);
+		return 1;
+	}
+
+	// Accept incoming connection.  Program pauses here until
+	// a connection arrives.
+	acceptSocket = accept(listenSocket, NULL, NULL); 
+
+	// For this program, the listen socket is no longer needed so it will be closed
+	closesocket(listenSocket);
+
+	cout << "Connected...\n\n";
+	do
+	{
+		// Wait to receive a message from the remote computer
+		cout << "\n\t--WAIT--\n\n";
+		int iRecv = recv(acceptSocket, (char*)&clientRequest, BUFSIZ, 0);
+
+		if (iRecv == SOCKET_ERROR)
+		{
+			cerr << "ERROR: Failed to receive message\n";
+			cleanup(acceptSocket);
+			return 1;
+		}
+
+		if (clientRequest == QUERY)
+		{
+			dataFile.open(FILENAME);
+
+			int version = readInt(dataFile);
+
+			dataFile.close();
+
+			int sendVer = send(acceptSocket, (char*)&version, BUFSIZ, 0);
+			if (sendVer == SOCKET_ERROR)
+			{
+				cerr << "ERROR: Failed to receive message\n";
+				cleanup(acceptSocket);
+				return 1;
+			}
+		}
+
+		if (clientRequest == UPDATE)
+		{
+			dataFile.open(FILENAME);
+
+			int updateVer = readInt(dataFile);
+
+			dataFile.close();
+
+			int sendUpdate = send(acceptSocket, (char*)&updateVer, BUFSIZ, 0);
+			if (sendUpdate == SOCKET_ERROR)
+			{
+				cerr << "ERROR: Failed to receive message\n";
+				cleanup(acceptSocket);
+				return 1;
+			}
+
+			cleanup(acceptSocket);
+		}
+	} while (clientRequest == 0);
+	
 	return 0;
+}
+
+void cleanup(SOCKET socket)
+{
+	closesocket(socket);
+	WSACleanup();
 }
