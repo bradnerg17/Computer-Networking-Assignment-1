@@ -12,6 +12,7 @@ const int  PORT = 50000;
 const int  QUERY = 1;
 const int  UPDATE = 2;
 
+int sendUpdate(SOCKET acceptSocket, ifstream& inFile);
 void cleanup(SOCKET socket);
 
 int main()
@@ -20,9 +21,18 @@ int main()
 	SOCKET		listenSocket;
 	SOCKET		acceptSocket;
 	SOCKADDR_IN	serverAddr;
-	int			clientRequest = 0;
-	ifstream	dataFile;
-	ofstream	updateFile;
+	ifstream	inFile;
+	int			version;
+	boolean		done = false;
+	int			numRequests = 0;
+
+	openInputFile(inFile, FILENAME);
+	version = readInt(inFile);
+	inFile.close();
+
+	cout << "Update server\n";
+	cout << "Current data file version: v" << version << "\n";
+	cout << "Running on port number " << PORT << "\n\n";
 
 	// Loads Windows DLL (Winsock version 2.2) used in network programming
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR)
@@ -51,7 +61,6 @@ int main()
 		return 1;
 	}
 
-	cout << "Waiting for connection...\n";
 	// Start listening for incoming connections
 	if (listen(listenSocket, 1) == SOCKET_ERROR)
 	{
@@ -60,67 +69,106 @@ int main()
 		return 1;
 	}
 
+
 	// Accept incoming connection.  Program pauses here until
 	// a connection arrives.
-	acceptSocket = accept(listenSocket, NULL, NULL); 
 
-	// For this program, the listen socket is no longer needed so it will be closed
-	closesocket(listenSocket);
-
-	cout << "Connected...\n\n";
-	do
+	while (numRequests >= 0)
 	{
-		// Wait to receive a message from the remote computer
-		cout << "\n\t--WAIT--\n\n";
-		int iRecv = recv(acceptSocket, (char*)&clientRequest, BUFSIZ, 0);
+		cout << "Waiting for connections...\n";
 
-		if (iRecv == SOCKET_ERROR)
+		acceptSocket = accept(listenSocket, NULL, NULL);
+		if (acceptSocket == INVALID_SOCKET)
 		{
-			cerr << "ERROR: Failed to receive message\n";
+			cerr << "ERROR: Invalid socket\n\n";
+			cleanup(listenSocket);
 			cleanup(acceptSocket);
 			return 1;
 		}
 
-		if (clientRequest == QUERY)
+		cout << "Connection received\n";
+
+		numRequests++;
+
+		if (numRequests % 5 == 0)
 		{
-			dataFile.open(FILENAME);
-
-			int version = readInt(dataFile);
-
-			dataFile.close();
-
-			int sendVer = send(acceptSocket, (char*)&version, BUFSIZ, 0);
-			if (sendVer == SOCKET_ERROR)
-			{
-				cerr << "ERROR: Failed to receive message\n";
-				cleanup(acceptSocket);
-				return 1;
-			}
+			openInputFile(inFile, FILENAME);
+			version = readInt(inFile);
+			inFile.close();
 		}
 
-		if (clientRequest == UPDATE)
+		int	clientRequest;
+
+		// Wait to receive a message from the remote computer
+		int iRecv = recv(acceptSocket, (char*)&clientRequest, sizeof(clientRequest), 0);
+
+		if (iRecv == SOCKET_ERROR)
 		{
-			dataFile.open(FILENAME);
-
-			int updateVer = readInt(dataFile);
-
-			dataFile.close();
-
-			int sendUpdate = send(acceptSocket, (char*)&updateVer, BUFSIZ, 0);
-			if (sendUpdate == SOCKET_ERROR)
-			{
-				cerr << "ERROR: Failed to receive message\n";
-				cleanup(acceptSocket);
-				return 1;
-			}
-
+			cerr << "ERROR: Failed to recieve request.\n\n";
+			cleanup(listenSocket);
 			cleanup(acceptSocket);
+			return 1;
 		}
-	} while (clientRequest == 0);
-	
+		else
+		{
+			if (clientRequest == QUERY)
+			{
+				cout << "\tRequest for current version number: v" << version << "\n";
+				int sendVer = send(acceptSocket, (char*)&version, sizeof(version), 0);
+				if (sendVer == SOCKET_ERROR)
+				{
+					cerr << "ERROR: Failed to send version.\n\n";
+					cleanup(listenSocket);
+					cleanup(acceptSocket);
+					return 1;
+				}
+			}
+			else if (clientRequest == UPDATE)
+			{
+				cout << "\t Request for update: v" << version << "\n";
+				openInputFile(inFile, FILENAME);
+				int readUpdate = sendUpdate(acceptSocket, inFile);
+				inFile.close();
+
+				if (readUpdate == SOCKET_ERROR)
+				{
+					cerr << "ERROR: Failed to send update.\n\n";
+					cleanup(listenSocket);
+					cleanup(acceptSocket);
+					return 1;
+				}
+			}
+			else
+			{
+				cerr << "ERROR: Invalid request.\n\n";
+			}
+		}
+
+		closesocket(acceptSocket);
+		cout << "\tConnection closed\n";
+		cout << "Total requests handled: " << numRequests << "\n\n";
+
+	} 
+
 	return 0;
 }
 
+int sendUpdate(SOCKET acceptSocket, ifstream& inFile)
+{
+	int sendUpdate = 0;
+	for (int i = 0; i <= 2; i++)
+	{
+		int updateByte = readInt(inFile);
+		cout << "\t\tSending " << updateByte << "\n";
+		sendUpdate = send(acceptSocket, (char*)&updateByte, sizeof(updateByte), 0);
+
+		if (sendUpdate == SOCKET_ERROR)
+		{
+			break;
+		}
+	}
+	return sendUpdate;
+}
 void cleanup(SOCKET socket)
 {
 	closesocket(socket);

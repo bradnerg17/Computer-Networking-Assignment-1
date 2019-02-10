@@ -1,5 +1,18 @@
+/* 
+Names: Greg Bradner
+
+UpdateClient.cpp is a client for a server that adds two integers read from a file "data.bin" together and displays the results.
+It starts by connecting to UpdateServer using port 50000 and requesting the current version of data.bin being used by the server.
+After recieving the current version number used by the server the connection is closed and if the versions match, the program begins
+its normal operation by adding the two integers. If the local version does not match the server's version, a new connection to the
+server is made and UpdateClient requests the updated data file. After recieving the update data.bin is overwritten by the updated 
+version and the connection is closed and the integers from the updated file are added together.
+
+****UpdateServer.cpp must be running before starting UpdateClient.cpp****
+*/
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
+#include <string>
 #include <iostream>
 #include "FileHelper.h"
 using namespace std;
@@ -7,7 +20,6 @@ using namespace std;
 #pragma comment(lib, "Ws2_32.lib")
 
 const char FILENAME[] = "data.bin";
-const char UPDATENAME[] = "update.bin";
 const char IPADDR[] = "127.0.0.1";
 const int  PORT = 50000;
 const int  QUERY = 1;
@@ -30,13 +42,16 @@ int main()
 	int			sum;
 	int			num1 = 0;
 	int			num2 = 0;	
-	int			localVersion = 0;
+	int			localVersion;
 	int			serverVersion;
-	char		updateBuff[BUFSIZ];
+	int			updateData[3];
 	ofstream	dataFile;
-	ofstream	updateFile;
-	ifstream	readUpdate;
-	
+	boolean		done = false;
+
+	localVersion = getLocalVersion();
+	cout << "Update client\n";
+	cout << "Current data file version: v" << localVersion << "\n\n";
+
 	// Loads Windows DLL (Winsock version 2.2) used in network programming
 	if ( WSAStartup( MAKEWORD(2, 2), &wsaData ) != NO_ERROR )
 	{
@@ -45,9 +60,8 @@ int main()
 	}
 
 	// Create a new socket for communication
-	SOCKET mySocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	if (mySocket == INVALID_SOCKET)
+	SOCKET querySocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (querySocket == INVALID_SOCKET)
 	{
 		cerr << "ERROR: Cannot create socket\n";
 		WSACleanup();
@@ -58,86 +72,94 @@ int main()
 	serverAddr.sin_port = htons(PORT);
 	inet_pton(AF_INET, IPADDR, &serverAddr.sin_addr);
 
+	cout << "Connecting to server...\n";
+
 	// Try to connect
-	if (connect(mySocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
+	if (connect(querySocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 	{
 		cerr << "ERROR: Failed to connect\n";
-		cleanup(mySocket);
+		cleanup(querySocket);
 		return 1;
 	}
 
-	int sendQuery = send(mySocket, (char*)&QUERY, 1, 0);
-	
-	cout << "Contacting server...\n";
+	cout << "Requesting version number...\n";
 
-	if (sendQuery == SOCKET_ERROR) 
+	if (send(querySocket, (char*)&QUERY, sizeof(QUERY), 0) == SOCKET_ERROR)
 	{
 		cerr << "ERROR: Failed to send request\n";
-		cleanup(mySocket);
+		cleanup(querySocket);
 		return 1;
 	}
 
-	int versionRecv = recv(mySocket, (char*)&serverVersion, BUFSIZ, 0);
-
-	cout << "Recieving version number...\n";
-
-	if (versionRecv == SOCKET_ERROR)
+	if (recv(querySocket, (char*)&serverVersion, sizeof(serverVersion), 0) == SOCKET_ERROR)
 	{
 		cerr << "ERROR: Failed to receive version number\n";
-		cleanup(mySocket);
+		cleanup(querySocket);
 		return 1;
 	}
+	closesocket(querySocket);
 
-	// Main purpose of the program starts here: read two numbers from the data file and calculate the sum
-	localVersion = getLocalVersion();
-
-	cout << "\nSum Calculator server version " << serverVersion << "\n\n";
-
-	cout << "Sum Calculator current version " << localVersion << "\n\n";
+	cout << "data.bin server version: v" << serverVersion << "\n\n";
 
 	if(localVersion != serverVersion)
 	{
-		cout << "\nSum Calculator must be updated\n\n";
-
-		int sendUpdate = send(mySocket, (char*)&UPDATE, 1, 0);
-
-		cout << "Requesting update version " << serverVersion << "...\n";
-
-		if (sendUpdate == SOCKET_ERROR)
+		SOCKET updateSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if (updateSocket == INVALID_SOCKET)
 		{
-			cerr << "ERROR: Failed to send update request\n";
-			cleanup(mySocket);
+			cerr << "ERROR: Cannot create socket\n";
+			WSACleanup();
 			return 1;
 		}
 
-		int updateRecv = recv(mySocket, updateBuff, BUFSIZ, 0);
-
-		cout << "Recieving update information";
-
-		if (updateRecv == SOCKET_ERROR)
+		if (connect(updateSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
 		{
-			cout << "ERROR: Failed to recieve update\n";
-			cleanup(mySocket);
+			cerr << "ERROR: Failed to connect\n";
+			cleanup(updateSocket);
 			return 1;
 		}
+		else
+		{
+			cout << "Requesting update v" << serverVersion << "...\n";
 
-		updateFile.open(UPDATENAME);
-		writeInt(updateFile, (int)updateBuff);
-		updateFile.close();
+			if (send(updateSocket, (char*)&UPDATE, sizeof(UPDATE), 0) == SOCKET_ERROR)
+			{
+				cerr << "ERROR: Failed to send update request\n";
+				cleanup(updateSocket);
+				return 1;
+			}
 
-		readUpdate.open(UPDATENAME);
-		int toData = readInt(readUpdate);
-		readUpdate.close();
+			cout << "Downloading update...\n";
 
-		dataFile.open(FILENAME);
-		writeInt(dataFile, toData);
+			//Make a seperate function******
+			for (int i = 0; i <= 2; i++)
+			{
+				int updateNum = 0;
 
-		cout << "Updating data file\n";
+				//may need to store this in a temp file or an array based on the size of updateBytes******
+				int updateBytes = recv(updateSocket, (char*)&updateNum, sizeof(updateNum), 0);
+				if (updateBytes == SOCKET_ERROR)
+				{
+					cout << "ERROR: Failed to recieve update\n";
+					cleanup(updateSocket);
+					return 1;
+				}
 
-		dataFile.close();
+				updateData[i] = updateNum;
+			}
+
+			//Make a seperate function********
+			openOutputFile(dataFile, FILENAME);
+			for (int i = 0; i <= 2; i++)
+			{
+				writeInt(dataFile, updateData[i]);
+			}
+
+			dataFile.close();
+		}
+		cleanup(updateSocket);
 	}
-	closesocket(mySocket);
-	
+
+	cout << "Succefully updated to v" << serverVersion << "\n\n";
 	readData(num1, num2);	
 	sum = num1 + num2;
 	cout << "The sum of " << num1 << " and " << num2 << " is " << sum << endl;
