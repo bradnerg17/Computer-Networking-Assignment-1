@@ -1,5 +1,5 @@
 /* 
-Names: Greg Bradner
+Names: Greg Bradner, Jamel Koonce
 
 UpdateClient.cpp is a client for a server that adds two integers read from a file "data.bin" together and displays the results.
 It starts by connecting to UpdateServer using port 50000 and requesting the current version of data.bin being used by the server.

@@ -1,3 +1,16 @@
+/*
+Names: Greg Bradner, Jamel Koonce
+
+UpdateServer.cpp is a server program that allows connection from a client program to host and then execute its code.
+It starts by opening itself on the local IP host address '127.0.0.1' using port 50000 and begins listening for cnnections
+from a client program. After recieving and validating the client connection, it checks to see what type of request is being
+made by the client program. The client will check to see what version of the program is currently being hosted by the server
+and compare it to it's local copy. If they are different, the server will establish a new connection to provide the client with
+the updated file information. After completion, the connection will close and the client will execute the program. The server will
+then continue to wait for a new connection from a client.
+
+****UpdateServer.cpp must be running before starting UpdateClient.cpp****
+*/
 #include <WinSock2.h>
 #include <Ws2tcpip.h>
 #include <iostream>
@@ -89,7 +102,7 @@ int main()
 		cout << "Connection received\n";
 
 		numRequests++;
-
+		//Force a version check on every 5 connections
 		if (numRequests % 5 == 0)
 		{
 			openInputFile(inFile, FILENAME);
@@ -110,7 +123,7 @@ int main()
 			return 1;
 		}
 		else
-		{
+		{	//Provides Client with current copy of the data file it can access.
 			if (clientRequest == QUERY)
 			{
 				cout << "\tRequest for current version number: v" << version << "\n";
@@ -122,7 +135,7 @@ int main()
 					cleanup(acceptSocket);
 					return 1;
 				}
-			}
+			}//Prepares to give the client updated file information using the 'sendUpdate' function
 			else if (clientRequest == UPDATE)
 			{
 				cout << "\t Request for update: v" << version << "\n";
@@ -152,7 +165,9 @@ int main()
 
 	return 0;
 }
-
+//Each version of the data file contains 3 lines of information. Top line contains
+//file version number, 2nd and 3rd lines contain two values to be added by the client.
+//sendUpdate loops through the file, reads, and sends those values to the connected client program.
 int sendUpdate(SOCKET acceptSocket, ifstream& inFile)
 {
 	int sendUpdate = 0;
